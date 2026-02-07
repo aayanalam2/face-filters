@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, RotateCw, Monitor, SlidersHorizontal, RefreshCw, Maximize, Eye, EyeOff } from 'lucide-react';
 
 interface AppConfig {
   autoRotate: boolean;
@@ -12,203 +13,192 @@ interface AppConfig {
   filterIntensity: number;
 }
 
-interface Filter {
-  id: string;
-  name: string;
-  emoji: string;
-  category: string;
-}
-
 interface ConfigPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
   config: AppConfig;
   setConfig: (config: AppConfig) => void;
-  filters: Filter[];
-  selectedFilter: string;
-  setSelectedFilter: (id: string) => void;
 }
 
-export default function ConfigPanel({ config, setConfig, filters, selectedFilter, setSelectedFilter }: ConfigPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`toggle-switch ${checked ? 'active' : ''}`}
+      role="switch"
+      aria-checked={checked}
+    />
+  );
+}
 
-  const updateConfig = (key: keyof AppConfig, value: any) => {
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-sm text-white/80">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function SliderSetting({ label, value, min, max, unit, onChange, disabled }: {
+  label: string; value: number; min: number; max: number; unit: string;
+  onChange: (v: number) => void; disabled?: boolean;
+}) {
+  return (
+    <div className={`py-2.5 ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-white/80">{label}</span>
+        <span className="text-xs font-mono text-violet-300 bg-violet-500/10 px-2 py-0.5 rounded-full">
+          {value}{unit}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full"
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+export default function ConfigPanel({ isOpen, onClose, config, setConfig }: ConfigPanelProps) {
+  const update = (key: keyof AppConfig, value: any) => {
     setConfig({ ...config, [key]: value });
   };
 
   return (
-    <div className="relative">
-      {/* Collapse/Expand Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 -translate-y-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-t-lg font-semibold shadow-lg transition-all z-10"
-      >
-        {isExpanded ? '▼ Hide Controls' : '▲ Show Controls'}
-      </button>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm z-40"
+          />
 
-      {/* Control Panel */}
-      <div
-        className={`bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 border-t-4 border-purple-600 transition-all duration-300 ${
-          isExpanded ? 'h-auto opacity-100' : 'h-0 opacity-0 overflow-hidden'
-        }`}
-      >
-        <div className="p-6 space-y-6">
-          {/* Filter Selection Grid */}
-          <div>
-            <h3 className="text-white text-lg font-semibold mb-3">Select Filter</h3>
-            <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-15 gap-2">
-              {filters.map((filter) => (
+          {/* Panel */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className="absolute right-0 top-0 bottom-0 w-full max-w-sm z-50 flex flex-col"
+          >
+            <div className="flex-1 glass overflow-y-auto">
+              {/* Header */}
+              <div className="sticky top-0 z-10 glass border-b border-white/5 px-5 py-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2.5">
+                  <SlidersHorizontal className="w-5 h-5 text-violet-400" />
+                  Settings
+                </h2>
                 <button
-                  key={filter.id}
-                  onClick={() => {
-                    setSelectedFilter(filter.id);
-                    updateConfig('autoRotate', false);
-                  }}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    selectedFilter === filter.id
-                      ? 'border-purple-400 bg-purple-600/50 scale-110'
-                      : 'border-gray-600 bg-gray-800/50 hover:border-purple-500'
-                  }`}
-                  title={filter.name}
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
                 >
-                  <div className="text-2xl">{filter.emoji}</div>
-                  <div className="text-xs text-white mt-1 truncate">{filter.name}</div>
+                  <X className="w-4 h-4 text-white/70" />
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Settings Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Auto-Rotate Settings */}
-            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <span>🔄</span> Auto-Rotate
-              </h4>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between text-white">
-                  <span>Enable Auto-Rotate</span>
-                  <input
-                    type="checkbox"
-                    checked={config.autoRotate}
-                    onChange={(e) => updateConfig('autoRotate', e.target.checked)}
-                    className="w-5 h-5 rounded"
-                  />
-                </label>
-                <div>
-                  <label className="text-white text-sm block mb-1">
-                    Interval: {config.rotationInterval}s
-                  </label>
-                  <input
-                    type="range"
-                    min="2"
-                    max="30"
-                    value={config.rotationInterval}
-                    onChange={(e) => updateConfig('rotationInterval', Number(e.target.value))}
-                    className="w-full"
-                    disabled={!config.autoRotate}
-                  />
-                </div>
+              <div className="px-5 py-4 space-y-6">
+                {/* Auto-Rotate */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <RotateCw className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider">Auto-Rotate</h3>
+                  </div>
+                  <div className="glass-light rounded-xl px-4">
+                    <SettingRow label="Enable rotation">
+                      <Toggle checked={config.autoRotate} onChange={v => update('autoRotate', v)} />
+                    </SettingRow>
+                    <div className="border-t border-white/5" />
+                    <SliderSetting
+                      label="Interval"
+                      value={config.rotationInterval}
+                      min={2}
+                      max={30}
+                      unit="s"
+                      onChange={v => update('rotationInterval', v)}
+                      disabled={!config.autoRotate}
+                    />
+                  </div>
+                </section>
+
+                {/* Display */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Monitor className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider">Display</h3>
+                  </div>
+                  <div className="glass-light rounded-xl px-4">
+                    <SettingRow label="Show overlay UI">
+                      <Toggle checked={config.showUI} onChange={v => update('showUI', v)} />
+                    </SettingRow>
+                    <div className="border-t border-white/5" />
+                    <SettingRow label="Fullscreen">
+                      <Toggle checked={config.fullscreen} onChange={v => update('fullscreen', v)} />
+                    </SettingRow>
+                    <div className="border-t border-white/5" />
+                    <SliderSetting
+                      label="Brightness"
+                      value={config.brightness}
+                      min={50}
+                      max={150}
+                      unit="%"
+                      onChange={v => update('brightness', v)}
+                    />
+                  </div>
+                </section>
+
+                {/* Filter Settings */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <SlidersHorizontal className="w-4 h-4 text-violet-400" />
+                    <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider">Filter</h3>
+                  </div>
+                  <div className="glass-light rounded-xl px-4">
+                    <SliderSetting
+                      label="Filter intensity"
+                      value={config.filterIntensity}
+                      min={0}
+                      max={100}
+                      unit="%"
+                      onChange={v => update('filterIntensity', v)}
+                    />
+                    <div className="border-t border-white/5" />
+                    <SliderSetting
+                      label="Idle timeout"
+                      value={config.idleTimeout}
+                      min={1}
+                      max={10}
+                      unit="s"
+                      onChange={v => update('idleTimeout', v)}
+                    />
+                  </div>
+                </section>
+
+                {/* Actions */}
+                <section className="pb-6">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm font-medium transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Restart System
+                  </button>
+                </section>
               </div>
             </div>
-
-            {/* Display Settings */}
-            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <span>🖥️</span> Display
-              </h4>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between text-white">
-                  <span>Show UI</span>
-                  <input
-                    type="checkbox"
-                    checked={config.showUI}
-                    onChange={(e) => updateConfig('showUI', e.target.checked)}
-                    className="w-5 h-5 rounded"
-                  />
-                </label>
-                <label className="flex items-center justify-between text-white">
-                  <span>Fullscreen</span>
-                  <input
-                    type="checkbox"
-                    checked={config.fullscreen}
-                    onChange={(e) => updateConfig('fullscreen', e.target.checked)}
-                    className="w-5 h-5 rounded"
-                  />
-                </label>
-                <div>
-                  <label className="text-white text-sm block mb-1">
-                    Brightness: {config.brightness}%
-                  </label>
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={config.brightness}
-                    onChange={(e) => updateConfig('brightness', Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Filter Settings */}
-            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <span>🎨</span> Filter Settings
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-white text-sm block mb-1">
-                    Idle Timeout: {config.idleTimeout}s
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={config.idleTimeout}
-                    onChange={(e) => updateConfig('idleTimeout', Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="text-white text-sm block mb-1">
-                    Filter Intensity: {config.filterIntensity}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={config.filterIntensity}
-                    onChange={(e) => updateConfig('filterIntensity', Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold"
-            >
-              🔄 Restart System
-            </button>
-            <button
-              onClick={() => updateConfig('fullscreen', !config.fullscreen)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
-            >
-              {config.fullscreen ? '⊡ Exit Fullscreen' : '⛶ Enter Fullscreen'}
-            </button>
-            <button
-              onClick={() => updateConfig('showUI', !config.showUI)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold"
-            >
-              {config.showUI ? '👁️ Hide UI' : '👁️ Show UI'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
